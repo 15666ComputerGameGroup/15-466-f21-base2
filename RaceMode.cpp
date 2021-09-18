@@ -45,15 +45,35 @@ Load< Scene > hexapod_scene(LoadTagDefault, []() -> Scene const * {
 	});
 });
 
-RaceMode::RaceMode() : scene(*hexapod_scene) (){
+RaceMode::RaceMode() : scene(*hexapod_scene){
 	//TODO: implement this
+	
+	//TODO: change this
+	//get pointers to leg for convenience:
+	for (auto &transform : scene.transforms) {
+		if (transform.name == "Hip.FL") hip = &transform;
+		else if (transform.name == "UpperLeg.FL") upper_leg = &transform;
+		else if (transform.name == "LowerLeg.FL") lower_leg = &transform;
+	}
+	if (hip == nullptr) throw std::runtime_error("Hip not found.");
+	if (upper_leg == nullptr) throw std::runtime_error("Upper leg not found.");
+	if (lower_leg == nullptr) throw std::runtime_error("Lower leg not found.");
+
+	hip_base_rotation = hip->rotation;
+	upper_leg_base_rotation = upper_leg->rotation;
+	lower_leg_base_rotation = lower_leg->rotation;
+
+	//get pointer to camera for convenience:
+	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
+	camera = &scene.cameras.front();
+	
 }
 
 RaceMode::~RaceMode(){
 	
 }
 
-bool RaceMode::handle_event(SDL_Event const &, glm::uvec2 const &window_size){
+bool RaceMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size){
 	//TODO: implement this
 	
 	// arrow key controls directions
@@ -100,53 +120,100 @@ bool RaceMode::handle_event(SDL_Event const &, glm::uvec2 const &window_size){
 void RaceMode::update(float elapsed){
 	//TODO: implement this
 	
-	// camera move with player vehicle, no z axis motion
-	// player vehicle always on center
+	//TODO: delete this
+	//slowly rotates through [0,1):
+	wobble += elapsed / 10.0f;
+	wobble -= std::floor(wobble);
+
+	hip->rotation = hip_base_rotation * glm::angleAxis(
+		glm::radians(5.0f * std::sin(wobble * 2.0f * float(M_PI))),
+		glm::vec3(0.0f, 1.0f, 0.0f)
+	);
+	upper_leg->rotation = upper_leg_base_rotation * glm::angleAxis(
+		glm::radians(7.0f * std::sin(wobble * 2.0f * 2.0f * float(M_PI))),
+		glm::vec3(0.0f, 0.0f, 1.0f)
+	);
+	lower_leg->rotation = lower_leg_base_rotation * glm::angleAxis(
+		glm::radians(10.0f * std::sin(wobble * 3.0f * 2.0f * float(M_PI))),
+		glm::vec3(0.0f, 0.0f, 1.0f)
+	);
+	
+	//TODO: modify this
+	//move camera:
 	{
-		// forward and reverse
-		if (down.pressed && !up.pressed) PlayerSpeed =-1.0f;
-		if (!down.pressed && up.pressed) PlayerSpeed = 1.0f;
-		// left right should be rotation
-		float degree = 0.0f;				// rotation in degree
-		if (left.pressed && !right.pressed) degree =-1.0f;
-		if (!left.pressed && right.pressed) degree = 1.0f;
-		
-		// compute movement
-		
-		PlayerSpeed = (PlayerSpeed <= PlayerMaxSpeed) ? PlayerSpeed : PlayerMaxSpeed;			// speed cap
-		
-		// update direction
-		//https://stackoverflow.com/questions/8844585/glm-rotate-usage-in-opengl
-		player_dir = glm::rotate(player_dir, glm::radians(degree), glm::vec3(0.0f, 0.0f, 1.0f)); // rotate around z axis// TODO: check usage
-		player_dir = glm::normalize(player_dir)		// make sure still unit vector
-		
-		glm::vec2 move = glm::vec2(0.0f);			// translation for both player and camera
-		move = player_dir * PlayerSpeed * elapsed	// TODO: check size
-		
-		// camera transform matrix
+		//combine inputs into a move:
+		constexpr float PlayerSpeed = 30.0f;
+		glm::vec2 move = glm::vec2(0.0f);
+		if (left.pressed && !right.pressed) move.x =-1.0f;
+		if (!left.pressed && right.pressed) move.x = 1.0f;
+		if (down.pressed && !up.pressed) move.y =-1.0f;
+		if (!down.pressed && up.pressed) move.y = 1.0f;
+
+		//make it so that moving diagonally doesn't go faster:
+		if (move != glm::vec2(0.0f)) move = glm::normalize(move) * PlayerSpeed * elapsed;
+
 		glm::mat4x3 frame = camera->transform->make_local_to_parent();
 		glm::vec3 right = frame[0];
 		//glm::vec3 up = frame[1];
 		glm::vec3 forward = -frame[2];
-		
-		// move camera
+
 		camera->transform->position += move.x * right + move.y * forward;
-		camera->transform->rotation = glm::normalize(
-			camera->transform->rotation
-			* glm::angleAxis(-player_dir.x * camera->fovy, glm::vec3(0.0f, 1.0f, 0.0f))
-			* glm::angleAxis(player_dir.y * camera->fovy, glm::vec3(1.0f, 0.0f, 0.0f))
-		);		// TODO: check whether correct
-		
-		// move player
-		player_at.x += move.x;
-		player_at.y += move.y;
-		
 	}
+	
+	//reset button press counters:
+	left.downs = 0;
+	right.downs = 0;
+	up.downs = 0;
+	down.downs = 0;
 	
 }
 
 void RaceMode::draw(glm::uvec2 const &drawable_size){
 	//TODO: implement this
 	
+	//TODO: change this
+	//update camera aspect ratio for drawable:
+	camera->aspect = float(drawable_size.x) / float(drawable_size.y);
 
+	//set up light type and position for lit_color_texture_program:
+	// TODO: consider using the Light(s) in the scene to do this
+	glUseProgram(lit_color_texture_program->program);
+	glUniform1i(lit_color_texture_program->LIGHT_TYPE_int, 1);
+	glUniform3fv(lit_color_texture_program->LIGHT_DIRECTION_vec3, 1, glm::value_ptr(glm::vec3(0.0f, 0.0f,-1.0f)));
+	glUniform3fv(lit_color_texture_program->LIGHT_ENERGY_vec3, 1, glm::value_ptr(glm::vec3(1.0f, 1.0f, 0.95f)));
+	glUseProgram(0);
+
+	glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+	glClearDepth(1.0f); //1.0 is actually the default value to clear the depth buffer to, but FYI you can change it.
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LESS); //this is the default depth comparison function, but FYI you can change it.
+
+	GL_ERRORS(); //print any errors produced by this setup code
+
+	scene.draw(*camera);
+
+	{ //use DrawLines to overlay some text:
+		glDisable(GL_DEPTH_TEST);
+		float aspect = float(drawable_size.x) / float(drawable_size.y);
+		DrawLines lines(glm::mat4(
+			1.0f / aspect, 0.0f, 0.0f, 0.0f,
+			0.0f, 1.0f, 0.0f, 0.0f,
+			0.0f, 0.0f, 1.0f, 0.0f,
+			0.0f, 0.0f, 0.0f, 1.0f
+		));
+
+		constexpr float H = 0.09f;
+		lines.draw_text("Mouse motion rotates camera; WASD moves; escape ungrabs mouse",
+			glm::vec3(-aspect + 0.1f * H, -1.0 + 0.1f * H, 0.0),
+			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+			glm::u8vec4(0x00, 0x00, 0x00, 0x00));
+		float ofs = 2.0f / drawable_size.y;
+		lines.draw_text("Mouse motion rotates camera; WASD moves; escape ungrabs mouse",
+			glm::vec3(-aspect + 0.1f * H + ofs, -1.0 + + 0.1f * H + ofs, 0.0),
+			glm::vec3(H, 0.0f, 0.0f), glm::vec3(0.0f, H, 0.0f),
+			glm::u8vec4(0xff, 0xff, 0xff, 0x00));
+	}
+	
 }

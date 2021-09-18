@@ -114,11 +114,13 @@ if $(OS) = NT { #Windows
 
 #Store the names of various .cpp files to build into variables:
 GAME_NAMES =
-	PlayMode
+	RaceMode
 	main
 	LitColorTextureProgram
 	#ColorTextureProgram #not used right now, but you might want it
 	;
+#Removed PlayMode
+
 
 COMMON_NAMES =
 	data_path
