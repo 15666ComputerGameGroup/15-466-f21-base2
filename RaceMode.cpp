@@ -22,16 +22,19 @@
 #include <glm/gtx/string_cast.hpp>
 #define GLM_ENABLE_EXPERIMENTAL	// print matrix
 
-// shader
+//load scene
+//shader
 GLuint hexapod_meshes_for_lit_color_texture_program = 0;
 Load< MeshBuffer > hexapod_meshes(LoadTagDefault, []() -> MeshBuffer const * {
-	MeshBuffer const *ret = new MeshBuffer(data_path("hexapod.pnct"));
+	MeshBuffer const *ret = new MeshBuffer(data_path("hexapod.pnct"));				//TODO: change data path
 	hexapod_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
 	return ret;
 });
 
 // asset loading
 Load< Scene > hexapod_scene(LoadTagDefault, []() -> Scene const * {
+	//TODO: change data path
+	
 	return new Scene(data_path("hexapod.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
 		Mesh const &mesh = hexapod_meshes->lookup(mesh_name);
 
@@ -48,8 +51,38 @@ Load< Scene > hexapod_scene(LoadTagDefault, []() -> Scene const * {
 	});
 });
 
-RaceMode::RaceMode() : scene(*hexapod_scene){
-	//TODO: implement this
+//load player vehicle
+/*
+GLuint hexapod_meshes_for_lit_color_texture_program = 0;
+Load< MeshBuffer > car_meshes(LoadTagDefault, []() -> MeshBuffer const * {
+	MeshBuffer const *ret = new MeshBuffer(data_path("car.pnct"));				//TODO: check data path
+	car_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
+	return ret;
+});
+
+// asset loading
+Load< Scene > car_scene(LoadTagDefault, []() -> Scene const * {
+	//TODO: change data path
+	return new Scene(data_path("car.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
+		Mesh const &mesh = car_meshes->lookup(mesh_name);
+
+		scene.drawables.emplace_back(transform);
+		Scene::Drawable &drawable = scene.drawables.back();
+
+		drawable.pipeline = lit_color_texture_program_pipeline;
+
+		drawable.pipeline.vao = car_meshes_for_lit_color_texture_program;
+		drawable.pipeline.type = mesh.type;
+		drawable.pipeline.start = mesh.start;
+		drawable.pipeline.count = mesh.count;
+
+	});
+});
+*/
+
+
+
+RaceMode::RaceMode() : scene(*hexapod_scene), player_car(*car_scene){
 	
 	//TODO: change this
 	//get pointers to leg for convenience:
@@ -66,6 +99,16 @@ RaceMode::RaceMode() : scene(*hexapod_scene){
 	upper_leg_base_rotation = upper_leg->rotation;
 	lower_leg_base_rotation = lower_leg->rotation;
 
+	
+	//TODO: load player vehicle
+	//TODO: scale base on play_radius
+	//player_car->transform->scale *= player_radius;
+	
+	
+	
+	//TODO: load other vehicles, maybe in the future
+	
+	
 	//get pointer to camera for convenience:
 	if (scene.cameras.size() != 1) throw std::runtime_error("Expecting scene to have exactly one camera, but it has " + std::to_string(scene.cameras.size()));
 	camera = &scene.cameras.front();
@@ -76,9 +119,7 @@ RaceMode::~RaceMode(){
 	
 }
 
-bool RaceMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size){
-	//TODO: implement this
-	
+bool RaceMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size){	
 	// arrow key controls directions
 	if (evt.type == SDL_KEYDOWN) {
 		if (evt.key.keysym.sym == SDLK_ESCAPE) {
@@ -121,8 +162,6 @@ bool RaceMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 }
 
 void RaceMode::update(float elapsed){
-	//TODO: implement this
-	
 	//TODO: delete this
 	//slowly rotates through [0,1):
 	wobble += elapsed / 10.0f;
@@ -141,54 +180,60 @@ void RaceMode::update(float elapsed){
 		glm::vec3(0.0f, 0.0f, 1.0f)
 	);
 	
-	//TODO: modify this
-	//move camera:
-	{
-		//combine inputs into a move:
-		//rotate left right
-		float degree = 0.0f;		//rotation in degree
-		if (left.pressed && !right.pressed) degree += 0.05f;
-		if (!left.pressed && right.pressed) degree -= 0.05f;
-		//forward and backward
-		if (down.pressed && !up.pressed) PlayerSpeed -= 1.0f;
-		if (!down.pressed && up.pressed) PlayerSpeed += 1.0f;
+	//------process input--------
+	
+	//combine inputs into a move:
+	//rotate left right
+	float degree = 0.0f;		//rotation in degree
+	if (left.pressed && !right.pressed) degree += 0.05f;
+	if (!left.pressed && right.pressed) degree -= 0.05f;
+	//forward and backward
+	if (down.pressed && !up.pressed) PlayerSpeed -= 1.0f;
+	if (!down.pressed && up.pressed) PlayerSpeed += 1.0f;
 
-		//constrain speed
-		constexpr float PlayerMaxSpeed = 30.0f;				// player max velocity // TODO: may need to adjust
-		constexpr float PlayerMinSpeed = -10.0f;
-		PlayerSpeed = (PlayerSpeed > PlayerMinSpeed) ? PlayerSpeed : PlayerMinSpeed;
-		PlayerSpeed = (PlayerSpeed < PlayerMaxSpeed) ? PlayerSpeed : PlayerMaxSpeed;
-		
-		//rotate around y axis, y point up
-		glm::mat4 unitDir = glm::mat4(1.0f);
-		player_dir = glm::rotate(unitDir, glm::radians(degree), glm::vec3(0.0f, 1.0f, 0.0f)) * player_dir;
-		player_dir = glm::normalize(player_dir);	// make unit vector
-		//std::cout<<glm::to_string(player_dir)<<std::endl;
-		
-		//make it so that moving diagonally doesn't go faster:
-		glm::vec4 move = glm::vec4(0.0f);
-		move += player_dir * PlayerSpeed * elapsed;
-		std::cout<<glm::to_string(move)<<std::endl;
+	//constrain speed
+	constexpr float PlayerMaxSpeed = 30.0f;				// player max velocity // TODO: may need to adjust
+	constexpr float PlayerMinSpeed = -10.0f;
+	PlayerSpeed = (PlayerSpeed > PlayerMinSpeed) ? PlayerSpeed : PlayerMinSpeed;
+	PlayerSpeed = (PlayerSpeed < PlayerMaxSpeed) ? PlayerSpeed : PlayerMaxSpeed;
+	
+	//rotate around y axis, y point up
+	glm::mat4 unitDir = glm::mat4(1.0f);
+	player_dir = glm::rotate(unitDir, glm::radians(degree), glm::vec3(0.0f, 1.0f, 0.0f)) * player_dir;
+	player_dir = glm::normalize(player_dir);	// make unit vector
+	//std::cout<<glm::to_string(player_dir)<<std::endl;
+	
+	
+	//--------collision detection--------------
+	//TODO: finish this
+	
+	
+	
+	//---------update location, apply transform-------
+	
+	//make it so that moving diagonally doesn't go faster:
+	glm::vec4 move = glm::vec4(0.0f);
+	move += player_dir * PlayerSpeed * elapsed;			// displacement vector
+	std::cout<<glm::to_string(move)<<std::endl;
 
-		//player transform
-		
-		
-		
-		//camera transform
-		glm::mat4x3 frame = camera->transform->make_local_to_parent();
-		glm::vec3 right = frame[0];
-		//glm::vec3 up = frame[1];
-		glm::vec3 forward = -frame[2];
-		
-		//camera rotation
-		camera->transform->rotation = glm::normalize(
-			camera->transform->rotation
-			* glm::angleAxis(degree, glm::vec3(0.0f, 1.0f, 0.0f))
-		);
-		//camera translation
-		camera->transform->position += move.x * right + move.z * forward;	// moving in xz plane
-		
-	}
+	//player transform
+	
+	
+	
+	//camera transform
+	glm::mat4x3 frame = camera->transform->make_local_to_parent();
+	glm::vec3 right = frame[0];
+	//glm::vec3 up = frame[1];
+	glm::vec3 forward = -frame[2];
+	
+	//camera rotation
+	camera->transform->rotation = glm::normalize(
+		camera->transform->rotation
+		* glm::angleAxis(degree, glm::vec3(0.0f, 1.0f, 0.0f))
+	);
+	//camera translation
+	camera->transform->position += move.x * right + move.z * forward;	// moving in xz plane
+	
 	
 	//reset button press counters:
 	left.downs = 0;
