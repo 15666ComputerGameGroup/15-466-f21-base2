@@ -19,6 +19,9 @@
 
 #include <random>
 
+#include <glm/gtx/string_cast.hpp>
+#define GLM_ENABLE_EXPERIMENTAL	// print matrix
+
 // shader
 GLuint hexapod_meshes_for_lit_color_texture_program = 0;
 Load< MeshBuffer > hexapod_meshes(LoadTagDefault, []() -> MeshBuffer const * {
@@ -142,21 +145,42 @@ void RaceMode::update(float elapsed){
 	//move camera:
 	{
 		//combine inputs into a move:
-		constexpr float PlayerSpeed = 30.0f;
-		glm::vec2 move = glm::vec2(0.0f);
-		if (left.pressed && !right.pressed) move.x =-1.0f;
-		if (!left.pressed && right.pressed) move.x = 1.0f;
-		if (down.pressed && !up.pressed) move.y =-1.0f;
-		if (!down.pressed && up.pressed) move.y = 1.0f;
+//		constexpr float PlayerSpeed = 30.0f;
+		//rotate left right
+		float degree = 0.0f;		//rotation in degree
+		if (left.pressed && !right.pressed) degree += 0.01f;
+		if (!left.pressed && right.pressed) degree -= 0.01f;
+		
+		//forward and backward
+		if (down.pressed && !up.pressed) PlayerSpeed -= 0.01f;
+		if (!down.pressed && up.pressed) PlayerSpeed += 0.01f;
 
+		//constrain speed
+		constexpr float PlayerMaxSpeed = 30.0f;				// player max velocity // TODO: may need to adjust
+		PlayerSpeed = (PlayerSpeed > 0) ? PlayerSpeed : 0;
+		PlayerSpeed = (PlayerSpeed < PlayerMaxSpeed) ? PlayerSpeed : PlayerMaxSpeed;
+		
+		//rotate around y axis, y point up
+		glm::mat4 unitDir = glm::mat4(1.0f);
+		player_dir = glm::rotate(unitDir, glm::radians(degree), glm::vec3(0.0f, 1.0f, 0.0f)) * player_dir;
+		player_dir = glm::normalize(player_dir);	// make unit vector
+		std::cout<<glm::to_string(player_dir)<<std::endl;
+		
 		//make it so that moving diagonally doesn't go faster:
-		if (move != glm::vec2(0.0f)) move = glm::normalize(move) * PlayerSpeed * elapsed;
+		glm::vec4 move = glm::vec4(0.0f);
+		move = glm::normalize(player_dir) * PlayerSpeed * elapsed;
 
 		glm::mat4x3 frame = camera->transform->make_local_to_parent();
 		glm::vec3 right = frame[0];
 		//glm::vec3 up = frame[1];
 		glm::vec3 forward = -frame[2];
-
+		
+		//camera rotation
+		camera->transform->rotation = glm::normalize(
+			camera->transform->rotation
+			* glm::angleAxis(degree, glm::vec3(0.0f, 1.0f, 0.0f))
+		);
+		//camera translation
 		camera->transform->position += move.x * right + move.y * forward;
 	}
 	
