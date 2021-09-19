@@ -24,6 +24,8 @@
 
 //load scene
 //shader
+//TODO: delete this
+/*
 GLuint hexapod_meshes_for_lit_color_texture_program = 0;
 Load< MeshBuffer > hexapod_meshes(LoadTagDefault, []() -> MeshBuffer const * {
 	MeshBuffer const *ret = new MeshBuffer(data_path("hexapod.pnct"));				//TODO: change data path
@@ -50,41 +52,43 @@ Load< Scene > hexapod_scene(LoadTagDefault, []() -> Scene const * {
 
 	});
 });
+*/
 
-//load player vehicle
-/*
-GLuint hexapod_meshes_for_lit_color_texture_program = 0;
-Load< MeshBuffer > car_meshes(LoadTagDefault, []() -> MeshBuffer const * {
-	MeshBuffer const *ret = new MeshBuffer(data_path("car.pnct"));				//TODO: check data path
-	car_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
+
+//load racing scene
+//shader
+GLuint city_meshes_for_lit_color_texture_program = 0;
+Load< MeshBuffer > city_meshes(LoadTagDefault, []() -> MeshBuffer const * {
+	MeshBuffer const *ret = new MeshBuffer(data_path("city.pnct"));				//TODO: check data path
+	city_meshes_for_lit_color_texture_program = ret->make_vao_for_program(lit_color_texture_program->program);
 	return ret;
 });
 
 // asset loading
-Load< Scene > car_scene(LoadTagDefault, []() -> Scene const * {
+Load< Scene > city_scene(LoadTagDefault, []() -> Scene const * {
 	//TODO: change data path
-	return new Scene(data_path("car.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
-		Mesh const &mesh = car_meshes->lookup(mesh_name);
+	return new Scene(data_path("city.scene"), [&](Scene &scene, Scene::Transform *transform, std::string const &mesh_name){
+		Mesh const &mesh = city_meshes->lookup(mesh_name);
 
 		scene.drawables.emplace_back(transform);
 		Scene::Drawable &drawable = scene.drawables.back();
 
 		drawable.pipeline = lit_color_texture_program_pipeline;
 
-		drawable.pipeline.vao = car_meshes_for_lit_color_texture_program;
+		drawable.pipeline.vao = city_meshes_for_lit_color_texture_program;
 		drawable.pipeline.type = mesh.type;
 		drawable.pipeline.start = mesh.start;
 		drawable.pipeline.count = mesh.count;
 
 	});
 });
-*/
 
 
 
-RaceMode::RaceMode() : scene(*hexapod_scene), player_car(*car_scene){
+RaceMode::RaceMode() : scene(*city_scene){
 	
-	//TODO: change this
+	//TODO: remove this
+	/*
 	//get pointers to leg for convenience:
 	for (auto &transform : scene.transforms) {
 		if (transform.name == "Hip.FL") hip = &transform;
@@ -98,13 +102,19 @@ RaceMode::RaceMode() : scene(*hexapod_scene), player_car(*car_scene){
 	hip_base_rotation = hip->rotation;
 	upper_leg_base_rotation = upper_leg->rotation;
 	lower_leg_base_rotation = lower_leg->rotation;
-
+	 */
 	
 	//TODO: load player vehicle
-	//TODO: scale base on play_radius
-	//player_car->transform->scale *= player_radius;
+	//get pointers to player vehicle
+	for(auto &transform : scene.transforms){
+		if(transform.name == "PlayerCar.FL") player_car = &transform;
+	}
+	if(player_car == nullptr) throw std::runtime_error("PlayerCar not found.");
 	
+	player_car_rotation = player_car->rotation;
 	
+	//TODO: scale base on play_radius, may not need
+	//player_car->scale *= player_scale
 	
 	//TODO: load other vehicles, maybe in the future
 	
@@ -163,6 +173,7 @@ bool RaceMode::handle_event(SDL_Event const &evt, glm::uvec2 const &window_size)
 
 void RaceMode::update(float elapsed){
 	//TODO: delete this
+	/*
 	//slowly rotates through [0,1):
 	wobble += elapsed / 10.0f;
 	wobble -= std::floor(wobble);
@@ -179,6 +190,7 @@ void RaceMode::update(float elapsed){
 		glm::radians(10.0f * std::sin(wobble * 3.0f * 2.0f * float(M_PI))),
 		glm::vec3(0.0f, 0.0f, 1.0f)
 	);
+	 */
 	
 	//------process input--------
 	
@@ -217,14 +229,22 @@ void RaceMode::update(float elapsed){
 	std::cout<<glm::to_string(move)<<std::endl;
 
 	//player transform
-	
+	glm::mat4x3 player_frame = player_car->make_local_to_parent();
+	glm::vec3 player_right = player_frame[0];
+	//glm::vec3 player_up = player_frame[1];
+	glm::vec3 player_forward = -player_frame[2];
+	player_car_rotation = glm::normalize(
+		player_car_rotation
+		* glm::angleAxis(degree, glm::vec3(0.0f, 1.0f, 0.0f))
+	);
+	player_car->position += move.x * player_right + move.z * player_forward;
 	
 	
 	//camera transform
-	glm::mat4x3 frame = camera->transform->make_local_to_parent();
-	glm::vec3 right = frame[0];
-	//glm::vec3 up = frame[1];
-	glm::vec3 forward = -frame[2];
+	glm::mat4x3 camera_frame = camera->transform->make_local_to_parent();
+	glm::vec3 camera_right = camera_frame[0];
+	//glm::vec3 camera_up = camera_frame[1];
+	glm::vec3 camera_forward = -camera_frame[2];
 	
 	//camera rotation
 	camera->transform->rotation = glm::normalize(
@@ -232,7 +252,7 @@ void RaceMode::update(float elapsed){
 		* glm::angleAxis(degree, glm::vec3(0.0f, 1.0f, 0.0f))
 	);
 	//camera translation
-	camera->transform->position += move.x * right + move.z * forward;	// moving in xz plane
+	camera->transform->position += move.x * camera_right + move.z * camera_forward;	// moving in xz plane
 	
 	
 	//reset button press counters:
