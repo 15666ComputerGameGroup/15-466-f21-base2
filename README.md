@@ -1,12 +1,12 @@
-# (TODO: your game's title)
+# RACE!
 
 Author: Wenxuan Ou, Tejas Srivatsav
 
-Design: (TODO: In two sentences or fewer, describe what is new and interesting about your game.)
+Design: Player can drive the car and explore the city.
 
 Screen Shot:
 
-![Screen Shot](screenshot.png)
+![Screen Shot](gameplay.png)
 
 How Your Asset Pipeline Works:
 
@@ -14,9 +14,9 @@ How Your Asset Pipeline Works:
 
 How To Play:
 
-(TODO: describe the controls and (if needed) goals/strategy.)
+WASD to control speed and direction.
 
-Sources: (TODO: list a source URL for any assets you did not create yourself. Make sure you have a license for the asset.)
+Sources: City scene comes from the provided asset in homework. Wenxuan Ou added the simple car model. 
 
 This game was built with [NEST](NEST.md).
 
