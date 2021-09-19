@@ -10,7 +10,7 @@ Screen Shot:
 
 How Your Asset Pipeline Works:
 
-(TODO: describe the steps in your asset pipeline, from source files to tiles/backgrounds/whatever you upload to the PPU466.)
+Assets are created in Blender. The scene contains roads, buildings, and the car model. The blender file is processed by python scripts and converted to .pnct mesh data and .scene shader data. The data will then loaded in to the game by PlayMode.cpp.
 
 How To Play:
 
