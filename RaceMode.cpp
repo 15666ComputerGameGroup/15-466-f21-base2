@@ -145,31 +145,36 @@ void RaceMode::update(float elapsed){
 	//move camera:
 	{
 		//combine inputs into a move:
-//		constexpr float PlayerSpeed = 30.0f;
 		//rotate left right
 		float degree = 0.0f;		//rotation in degree
-		if (left.pressed && !right.pressed) degree += 0.01f;
-		if (!left.pressed && right.pressed) degree -= 0.01f;
-		
+		if (left.pressed && !right.pressed) degree += 0.05f;
+		if (!left.pressed && right.pressed) degree -= 0.05f;
 		//forward and backward
-		if (down.pressed && !up.pressed) PlayerSpeed -= 0.01f;
-		if (!down.pressed && up.pressed) PlayerSpeed += 0.01f;
+		if (down.pressed && !up.pressed) PlayerSpeed -= 1.0f;
+		if (!down.pressed && up.pressed) PlayerSpeed += 1.0f;
 
 		//constrain speed
 		constexpr float PlayerMaxSpeed = 30.0f;				// player max velocity // TODO: may need to adjust
-		PlayerSpeed = (PlayerSpeed > 0) ? PlayerSpeed : 0;
+		constexpr float PlayerMinSpeed = -10.0f;
+		PlayerSpeed = (PlayerSpeed > PlayerMinSpeed) ? PlayerSpeed : PlayerMinSpeed;
 		PlayerSpeed = (PlayerSpeed < PlayerMaxSpeed) ? PlayerSpeed : PlayerMaxSpeed;
 		
 		//rotate around y axis, y point up
 		glm::mat4 unitDir = glm::mat4(1.0f);
 		player_dir = glm::rotate(unitDir, glm::radians(degree), glm::vec3(0.0f, 1.0f, 0.0f)) * player_dir;
 		player_dir = glm::normalize(player_dir);	// make unit vector
-		std::cout<<glm::to_string(player_dir)<<std::endl;
+		//std::cout<<glm::to_string(player_dir)<<std::endl;
 		
 		//make it so that moving diagonally doesn't go faster:
 		glm::vec4 move = glm::vec4(0.0f);
-		move = glm::normalize(player_dir) * PlayerSpeed * elapsed;
+		move += player_dir * PlayerSpeed * elapsed;
+		std::cout<<glm::to_string(move)<<std::endl;
 
+		//player transform
+		
+		
+		
+		//camera transform
 		glm::mat4x3 frame = camera->transform->make_local_to_parent();
 		glm::vec3 right = frame[0];
 		//glm::vec3 up = frame[1];
@@ -181,7 +186,8 @@ void RaceMode::update(float elapsed){
 			* glm::angleAxis(degree, glm::vec3(0.0f, 1.0f, 0.0f))
 		);
 		//camera translation
-		camera->transform->position += move.x * right + move.y * forward;
+		camera->transform->position += move.x * right + move.z * forward;	// moving in xz plane
+		
 	}
 	
 	//reset button press counters:

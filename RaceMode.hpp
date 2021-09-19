@@ -32,9 +32,9 @@ struct RaceMode : Mode {
 	
 	//player state:
 	float PlayerSpeed = 0.0f;							// player current velocity
-	glm::vec4 player_dir = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);	// player current face direction, (0,1,0))
-//	glm::vec3 player_at = glm::vec3(0.0f);	// player initial location
-//	glm::vec3 player_radius = glm::vec3(1.0f, 1.0f, 1.0f);	// size of player's vehicle // TODO: need to figure out number later
+	glm::vec4 player_dir = glm::vec4(0.0f, 0.0f, 1.0f, 1.0f);	// player current face direction, (0,0,1), xz plane
+	glm::vec4 player_at = glm::vec4(0.0f);				// player initial location
+	glm::vec3 player_radius = glm::vec3(1.0f, 1.0f, 1.0f);	// size of player's vehicle // TODO: need to figure out number later
 	
 	// TODO: delete this
 	//hexapod leg to wobble:
