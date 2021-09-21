@@ -16,6 +16,8 @@ How To Play:
 
 WASD to control speed and direction.
 
+NOTE: Contain major problem when moving. The transform coordinate is not correct.
+
 Sources: City scene comes from the provided asset in homework. Wenxuan Ou added the simple car model. 
 
 This game was built with [NEST](NEST.md).
