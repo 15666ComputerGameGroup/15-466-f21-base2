@@ -205,7 +205,7 @@ void RaceMode::update(float elapsed){
 
 	//constrain speed
 	constexpr float PlayerMaxSpeed = 30.0f;				// player max velocity // TODO: may need to adjust
-	constexpr float PlayerMinSpeed = -10.0f;
+	constexpr float PlayerMinSpeed = -30.0f;
 	PlayerSpeed = (PlayerSpeed > PlayerMinSpeed) ? PlayerSpeed : PlayerMinSpeed;
 	PlayerSpeed = (PlayerSpeed < PlayerMaxSpeed) ? PlayerSpeed : PlayerMaxSpeed;
 	
@@ -231,13 +231,13 @@ void RaceMode::update(float elapsed){
 	//player transform
 	glm::mat4x3 player_frame = player_car->make_local_to_parent();
 	glm::vec3 player_right = player_frame[0];
-	//glm::vec3 player_up = player_frame[1];
-	glm::vec3 player_forward = -player_frame[2];
+	glm::vec3 player_up = -player_frame[1];
+	// glm::vec3 player_forward = -player_frame[2];
 	player_car_rotation = glm::normalize(
 		player_car_rotation
 		* glm::angleAxis(degree, glm::vec3(0.0f, 1.0f, 0.0f))
 	);
-	player_car->position += move.x * player_right + move.z * player_forward;
+	player_car->position += move.x * player_right + move.y * player_up;
 	
 	
 	//camera transform
@@ -247,12 +247,12 @@ void RaceMode::update(float elapsed){
 	glm::vec3 camera_forward = -camera_frame[2];
 	
 	//camera rotation
-	camera->transform->rotation = glm::normalize(
-		camera->transform->rotation
-		* glm::angleAxis(degree, glm::vec3(0.0f, 1.0f, 0.0f))
-	);
+	// camera->transform->rotation = glm::normalize(
+	//	camera->transform->rotation
+	//	* glm::angleAxis(degree, glm::vec3(0.0f, 1.0f, 0.0f))
+	//);
 	//camera translation
-	camera->transform->position += move.x * camera_right + move.z * camera_forward;	// moving in xz plane
+	// camera->transform->position += move.x * camera_right + move.z * camera_forward;	// moving in xz plane
 	
 	
 	//reset button press counters:
